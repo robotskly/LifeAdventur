@@ -38,14 +38,14 @@ class _SplashViewState extends State<SplashView> {
             Padding(
               padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
               child: Text(
-                "Clearhead",
+                "美好时光",
                 style: TextStyle(fontSize: 25.0, fontWeight: FontWeight.bold),
               ),
             ),
             Padding(
               padding: EdgeInsets.only(left: 64, right: 64),
               child: Text(
-                "周末去哪玩，记录好时光",
+                "这是属于自己的时间。有温度，有痕迹，有意义，有乐趣，有幸福",
                 textAlign: TextAlign.center,
               ),
             ),

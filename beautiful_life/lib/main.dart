@@ -47,8 +47,9 @@ class MyApp extends StatelessWidget {
             return CircularProgressIndicator();
           }
           // 如果是第一次运行，显示引导页，否则显示首页
+          // return IntroductionAnimationScreen();
           return snapshot.data == true
-              ? NavigationHomeScreen()
+              ? IntroductionAnimationScreen()
               : NavigationHomeScreen();
         },
       ),
