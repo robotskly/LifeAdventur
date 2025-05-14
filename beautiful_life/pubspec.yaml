@@ -42,6 +42,7 @@ dependencies:
   flutter_screenutil: ^5.0.0+2
   flutter_svg: ^2.0.10
   flutter_launcher_icons: ^0.13.0 # 生成图标
+  faker: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,8 @@ flutter:
         - assets/fitness_app/
         - assets/hotel/
         - assets/introduction_animation/
+        - assets/lifeicons/
+        - assets/errors/
 
     # An image asset can refer to one or more resolution-specific "variants", see
     # https://flutter.dev/assets-and-images/#resolution-aware.

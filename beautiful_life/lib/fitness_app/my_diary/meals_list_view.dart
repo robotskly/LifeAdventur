@@ -3,8 +3,6 @@ import 'package:beautiful_life/fitness_app/models/meals_list_data.dart';
 import 'package:beautiful_life/main.dart';
 import 'package:flutter/material.dart';
 
-import '../../main.dart';
-
 class MealsListView extends StatefulWidget {
   const MealsListView(
       {Key? key, this.mainScreenAnimationController, this.mainScreenAnimation})

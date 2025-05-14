@@ -1,6 +1,15 @@
 import 'package:beautiful_life/app_theme.dart';
+import 'package:beautiful_life/find_fun/components/home_things_card_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'homelist.dart';
+import 'components/floating_action_menu.dart';
+import 'components/bottom_action_bar.dart';
+import 'package:http/http.dart' as http;
+import 'api_client.dart';
+import 'find_fun/models/funnythings_model.dart';
+import 'home_list_card_view.dart';
+import 'components/error_placeholder.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key}) : super(key: key);
@@ -10,19 +19,38 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
+  late Future<List<FunnyThingsModel>> _todosFuture;
+
   List<HomeList> homeList = HomeList.homeList;
+  List<FunnyThingsModel> funnyThingsModel = [];
   AnimationController? animationController;
   bool multiple = true;
+  late PageController pageController;
 
   @override
   void initState() {
     animationController = AnimationController(
         duration: const Duration(milliseconds: 2000), vsync: this);
+    pageController = PageController(
+      viewportFraction: 0.85,
+      initialPage: homeList.length * 1000,
+    );
+    getData();
     super.initState();
   }
 
   Future<bool> getData() async {
-    await Future<dynamic>.delayed(const Duration(milliseconds: 0));
+    _todosFuture = ApiClient.getTodos()
+    .then((todos) => todos.map((todo) => FunnyThingsModel.fromJson(todo)).toList())
+    .then((processedTodos) {
+      print('获取到的Todos数据: $processedTodos');
+      funnyThingsModel = processedTodos;
+      return processedTodos;
+    })
+    .catchError((error) {
+      print('获取Todos时发生错误: $error');
+      return <FunnyThingsModel>[];  // 发生错误时返回空列表
+    });
     return true;
   }
 
@@ -39,11 +67,33 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor:
           isLightMode == true ? AppTheme.white : AppTheme.nearlyBlack,
+      bottomNavigationBar: BottomActionBar(
+        items: homeList.map((item) => FloatingActionMenuItem(
+          icon: SvgPicture.asset(
+            'assets/lifeicons/icon_suijiyige.svg',
+            color: isLightMode ? const Color.fromARGB(255, 7, 241, 241) : AppTheme.white,
+            height: 24,
+          ),
+          label: '分享',
+          color: Colors.grey.withAlpha(00),
+          onPressed: () {
+            print('分享');
+            getData();
+          },
+          )
+        ).toList(),
+        bgColor: isLightMode ? Colors.white : AppTheme.nearlyBlack,
+      ),
       body: FutureBuilder<bool>(
         future: getData(),
         builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-          if (!snapshot.hasData) {
-            return const SizedBox();
+          if (snapshot.hasError) {
+            return ErrorPlaceholder(
+              type: ErrorType.network,
+              onRetry: () => getData().then((_) => setState(() {})),
+            );
+          } else if (!snapshot.hasData) {
+            return const ErrorPlaceholder(type: ErrorType.noData);
           } else {
             return Padding(
               padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -60,47 +110,99 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                         if (!snapshot.hasData) {
                           return const SizedBox();
                         } else {
-                          return GridView(
-                            padding: const EdgeInsets.only(
-                                top: 0, left: 12, right: 12),
-                            physics: const BouncingScrollPhysics(),
-                            scrollDirection: Axis.vertical,
-                            children: List<Widget>.generate(
-                              homeList.length,
-                              (int index) {
-                                final int count = homeList.length;
-                                final Animation<double> animation =
-                                    Tween<double>(begin: 0.0, end: 1.0).animate(
-                                  CurvedAnimation(
-                                    parent: animationController!,
-                                    curve: Interval((1 / count) * index, 1.0,
-                                        curve: Curves.fastOutSlowIn),
+                          return AnimatedSwitcher(
+                            duration: Duration(milliseconds: 500),
+                            child: multiple
+                                ? GridView(
+                                    padding: const EdgeInsets.only(top: 0, left: 12, right: 12),
+                                    physics: const BouncingScrollPhysics(),
+                                    scrollDirection: Axis.vertical,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      mainAxisSpacing: 12.0,
+                                      crossAxisSpacing: 12.0,
+                                      childAspectRatio: MediaQuery.of(context).size.width / MediaQuery.of(context).size.height,
+                                    ),
+                                    children: List<Widget>.generate(
+                                      homeList.length,
+                                      (int index) {
+                                        final int count = homeList.length;
+                                        final Animation<double> animation =
+                                            Tween<double>(begin: 0.0, end: 1.0).animate(
+                                          CurvedAnimation(
+                                            parent: animationController!,
+                                            curve: Interval((1 / count) * index, 1.0,
+                                                curve: Curves.fastOutSlowIn),
+                                          ),
+                                        );
+                                        animationController?.forward();
+                                        return Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: multiple ? 0 : MediaQuery.of(context).size.width * 0.05),
+                                          child: HomeListView(
+                                            animation: animation,
+                                            animationController: animationController,
+                                            listData: homeList[index],
+                                            callBack: () {
+                                              Navigator.push<dynamic>(
+                                              context,
+                                              MaterialPageRoute<dynamic>(
+                                                builder: (BuildContext context) =>
+                                                homeList[index].navigateScreen!,
+                                              ),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : PageView.builder(
+                                    controller: pageController,
+                                    itemCount: 100000,
+                                    itemBuilder: (context, index) {
+                                      final screenWidth = MediaQuery.of(context).size.width;
+                                      final itemIndex = index % homeList.length;
+                                      return AnimatedBuilder(
+                                        animation: animationController!,
+                                        builder: (BuildContext context, Widget? child) {
+                                          return Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                            child: HomeThingsCardView(
+                                              animation: animationController!,
+                                              animationController: animationController,
+                                              data: funnyThingsModel[itemIndex],
+                                              callBack: () {
+                                                Navigator.push<dynamic>(
+                                                  context,
+                                                  MaterialPageRoute<dynamic>(
+                                                    builder: (BuildContext context) =>
+                                                      homeList[itemIndex].navigateScreen!,
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                            
+      
+                                            // HomeListView(
+                                            //   animation: Tween<double>(begin: 0.0, end: 1.0)
+                                            //     .animate(animationController!),
+                                            //   animationController: animationController,
+                                            //   listData: homeList[itemIndex],
+                                            //   callBack: () {
+                                            //     Navigator.push<dynamic>(
+                                            //      context,
+                                            //      MaterialPageRoute<dynamic>(
+                                            //         builder: (BuildContext context) =>
+                                            //           homeList[itemIndex].navigateScreen!,
+                                            //       ),
+                                            //     );
+                                            //   },
+                                            // )
+                                          );
+                                        },
+                                      );
+                                    },
                                   ),
-                                );
-                                animationController?.forward();
-                                return HomeListView(
-                                  animation: animation,
-                                  animationController: animationController,
-                                  listData: homeList[index],
-                                  callBack: () {
-                                    Navigator.push<dynamic>(
-                                      context,
-                                      MaterialPageRoute<dynamic>(
-                                        builder: (BuildContext context) =>
-                                            homeList[index].navigateScreen!,
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: multiple ? 2 : 1,
-                              mainAxisSpacing: 12.0,
-                              crossAxisSpacing: 12.0,
-                              childAspectRatio: 1.5,
-                            ),
                           );
                         }
                       },
@@ -171,63 +273,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           ),
         ],
       ),
-    );
-  }
-}
-
-class HomeListView extends StatelessWidget {
-  const HomeListView(
-      {Key? key,
-      this.listData,
-      this.callBack,
-      this.animationController,
-      this.animation})
-      : super(key: key);
-
-  final HomeList? listData;
-  final VoidCallback? callBack;
-  final AnimationController? animationController;
-  final Animation<double>? animation;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animationController!,
-      builder: (BuildContext context, Widget? child) {
-        return FadeTransition(
-          opacity: animation!,
-          child: Transform(
-            transform: Matrix4.translationValues(
-                0.0, 50 * (1.0 - animation!.value), 0.0),
-            child: AspectRatio(
-              aspectRatio: 1.5,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.all(Radius.circular(4.0)),
-                child: Stack(
-                  alignment: AlignmentDirectional.center,
-                  children: <Widget>[
-                    Positioned.fill(
-                      child: Image.asset(
-                        listData!.imagePath,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        splashColor: Colors.grey.withOpacity(0.2),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(4.0)),
-                        onTap: callBack,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
