@@ -1,5 +1,6 @@
 import 'package:beautiful_life/app_theme.dart';
 import 'package:beautiful_life/find_fun/components/home_things_card_view.dart';
+import 'package:beautiful_life/utils/safelistaccess_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'homelist.dart';
@@ -170,7 +171,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                                             child: HomeThingsCardView(
                                               animation: animationController!,
                                               animationController: animationController,
-                                              data: funnyThingsModel[itemIndex],
+                                              data: funnyThingsModel.getOrNull(itemIndex),
                                               callBack: () {
                                                 Navigator.push<dynamic>(
                                                   context,
